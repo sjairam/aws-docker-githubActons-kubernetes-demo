@@ -1,2 +1,4 @@
-# aws-docker-githubActons-kubernetes-demo
-Demo of docker / github Actions / AWS Kuberenetes 
+# aws-docker-github-kubernetes-demo
+Demo of docker and kubernetes using GitHub Actions utilising AWS
+
+![AWS-docker-gitHubactions-ECR-EKS.jpg](AWS-docker-gitHubactions-ECR-EKS.jpg)
