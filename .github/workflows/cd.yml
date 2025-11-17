@@ -8,7 +8,7 @@ on:
 
 env: 
   AWS_REGION: eu-west-1
-  ECR_REPOSITORY: aws-docker-github-actions-kubernetes-demo
+  ECR_REPOSITORY: public.ecr.aws/c3g7z0k8/aws-docker-github-actions-kubernetes-demo
   SHORT_SHA: $(echo ${{ github.sha }} | cut -c 1-8)
 
 jobs:
