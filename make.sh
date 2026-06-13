@@ -46,7 +46,7 @@ cluster-create() {
         --name $PROJECT_NAME \
         --region $AWS_REGION \
         --managed \
-        --node-type t2.micro \
+        --node-type t2.medium \
         --nodes 1 \
         --profile $AWS_PROFILE
 }
@@ -130,6 +130,9 @@ cluster-delete() {
 ###############
 
 create-env() {
+    # ensure npm is available (setup installs it, but allow create-env to be run standalone)
+    [[ -z $(command -v npm) ]] && { error 'abort npm not found: run "./make.sh install-node" first'; return 1; }
+
     # log install site npm modules
     cd "$dir/site"
     npm install
@@ -178,13 +181,18 @@ create-env() {
     if [[ -z "$repo" ]]
     then
         log 'ecr create-repository'+ $PROJECT_NAME
-        local ECR_REPOSITORY=$(aws ecr create-repository \
+        local created=$(aws ecr create-repository \
             --repository-name $PROJECT_NAME \
             --region $AWS_REGION \
             --profile $AWS_PROFILE \
-            --query 'repository.repositoryUri' \
-            --output text)
+            --query 'repository.{repositoryUri:repositoryUri,repositoryArn:repositoryArn}' \
+            --output json)
+
+        local ECR_REPOSITORY=$(echo "$created" | jq '.repositoryUri' --raw-output)
         log 'ECR_REPOSITORY '+ $ECR_REPOSITORY
+
+        local ECR_REPOSITORY_ARN=$(echo "$created" | jq '.repositoryArn' --raw-output)
+        info 'ECR_REPOSITORY_ARN '+ $ECR_REPOSITORY_ARN
     fi
 
     # envsubst tips : https://unix.stackexchange.com/a/294400
@@ -264,12 +272,45 @@ install-yq() {
     fi
 }
 
-# install eksctl + kubectl + yq, create aws user + ecr repository
+###########
+## NODE / NPM
+###########
+# install node + npm if missing (no update)
+install-node() {
+    if [[ -n $(command -v npm) ]]
+    then
+        log 'skip npm already installed'
+        return
+    fi
+
+    log 'install node + npm'
+    if [[ -n $(command -v brew) ]]
+    then
+        # macOS / Linux with Homebrew
+        brew install node
+    elif [[ -n $(command -v apt-get) ]]
+    then
+        # Debian / Ubuntu
+        warn warn sudo is required
+        sudo apt-get update && sudo apt-get install -y nodejs npm
+    elif [[ -n $(command -v yum) ]]
+    then
+        # Amazon Linux / RHEL / CentOS
+        warn warn sudo is required
+        sudo yum install -y nodejs npm
+    else
+        error 'abort cannot install node automatically: no brew/apt-get/yum found. Install Node.js manually from https://nodejs.org and re-run.'
+        return 1
+    fi
+}
+
+# install eksctl + kubectl + yq + node, create aws user + ecr repository
 setup() {
     log setup 
     install-eksctl
     install-kubectl
     install-yq
+    install-node
     create-env
 }
 
